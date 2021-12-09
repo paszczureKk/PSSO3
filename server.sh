@@ -25,7 +25,9 @@ rmiregistry -J-Djava.rmi.server.useCodebaseOnly=false -J$LOG &
 cd ..
 
 # Compile the server-side code
-javac server/ComputeEngine.java
+javac server/AuctionServerFactory.java
+javac server/ItemManager.java
+javac server/Server.java
 
 
 # Make the server-side bytecode available via an HTTP server
@@ -40,7 +42,7 @@ echo "Press Enter when the HTTP server is on..."
 read
 
 # Run the server app
-java -Djava.rmi.server.codebase=http://$HTTPserverIP:$HTTPserverPort/ -Djava.rmi.server.hostname=$myIP -Djava.rmi.server.useCodebaseOnly=false -Djava.security.policy=java.policy $LOG server.ComputeEngine
+java -Djava.rmi.server.codebase=http://$HTTPserverIP:$HTTPserverPort/ -Djava.rmi.server.hostname=$myIP -Djava.rmi.server.useCodebaseOnly=false -Djava.security.policy=java.policy $LOG server.Server
 
 echo
 echo "Stop the HTTP server and RMIregistry before running this script again"

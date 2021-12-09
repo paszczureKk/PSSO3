@@ -19,7 +19,8 @@ rm server/*.class &>/dev/null
 rm common/*.class &>/dev/null
 
 # Compile the client-side code
-javac client/ComputePi.java
+javac client/BiddingStrategy.java
+javac client/Client.java
 
 # Make the client-side bytecode available via an HTTP server
 myIP=$(ip addr | grep 'state UP' -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/')
@@ -34,7 +35,7 @@ echo "Press Enter when the HTTP server is on..."
 read
 
 # Run the client app
-java -Djava.rmi.server.codebase=http://$HTTPserverIP:$HTTPserverPort/ -Djava.rmi.server.useCodebaseOnly=false -Djava.security.policy=java.policy $LOG client.ComputePi $RMIserverIP 10
+java -Djava.rmi.server.codebase=http://$HTTPserverIP:$HTTPserverPort/ -Djava.rmi.server.useCodebaseOnly=false -Djava.security.policy=java.policy $LOG client.Client $RMIserverIP 10
 
 echo
 echo "Stop the HTTP server before running this script again"

@@ -30,16 +30,18 @@ cd ..
 
 
 ::Compile the server-side code
-javac server/ComputeEngine.java
+javac server/AuctionServerFactory.java
+javac server/ItemManager.java
+javac server/Server.java
 
 
 ::Make the server-side bytecode available via an HTTP server
 ::We assume that an HTTP server is running on the same host as the server app 
 start /B hfs.exe common
 
-@echo Wait until the HTTP server is ready before starting ComputeEngine!
+@echo Wait until the HTTP server is ready before starting Server!
 @echo.
 @pause
 
 ::Run the server app
-java -Djava.rmi.server.codebase=http://%HTTPserverIP%:%HTTPserverPort%/ -Djava.rmi.server.hostname=%myIP% -Djava.security.policy=java.policy -Djava.rmi.server.useCodebaseOnly=false %LOG% server.ComputeEngine
+java -Djava.rmi.server.codebase=http://%HTTPserverIP%:%HTTPserverPort%/ -Djava.rmi.server.hostname=%myIP% -Djava.security.policy=java.policy -Djava.rmi.server.useCodebaseOnly=false %LOG% server.Server

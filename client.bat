@@ -20,16 +20,17 @@ del /S server\*.class
 del /S common\*.class
 
 ::Compile the client-side code
-javac client/ComputePrime.java
+javac client/BiddingStrategy.java
+javac client/Client.java
 
 ::Make the client-side bytecode available via an HTTP server
 ::We assume that an HTTP server is running on the same host as the client app
 start /B hfs.exe client
 
-@echo Wait until the HTTP server is ready before running ComputePrime!
+@echo Wait until the HTTP server is ready before running Client!
 @echo.
 @pause
 
 ::Run the client app
-java -Djava.rmi.server.codebase=http://%HTTPserverIP%:%HTTPserverPort%/ -Djava.security.policy=java.policy -Djava.rmi.server.useCodebaseOnly=false %LOG% client.ComputePrime %RMIregistryIP% 10
+java -Djava.rmi.server.codebase=http://%HTTPserverIP%:%HTTPserverPort%/ -Djava.security.policy=java.policy -Djava.rmi.server.useCodebaseOnly=false %LOG% client.Client %RMIregistryIP% 10
 
