@@ -10,33 +10,20 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Scanner;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
-import static java.util.Arrays.asList;
-
+@SuppressWarnings("removal")
 public class Client implements IAuctionListener{
     @Override
     public void update(Item item) throws RemoteException {
         if(item.getTimeRemaining() == 0) {
-            if(item.getCurrentBidder() == this.bidderName) {
+            if(item.getCurrentBidder().equals(this.bidderName)) {
                 this.ownedItems.add(item);
             }
-            this.removeWatch(item.getItemName());
         }
         else {
-            if(this.biddingStrategy == Strategies.Maximum) {
-                double bid = item.getCurrentBid() + 1.00;
-                if(bid > this.maximumBid) {
-                    System.out.println(String.format("Bid exceeds maximum amount, item: %s",
-                            item.getItemName()));
-                }
-                else {
-                    this.bidOnItem(item.getItemName(), bid);
-                }
-            }
+            this.biddingStrategy.bid(this.server, this, item);
         }
     }
 
@@ -46,101 +33,93 @@ public class Client implements IAuctionListener{
         System.out.println("[2] Set bidding strategy");
         System.out.println("[3] Display available items");
         System.out.println("[4] Bid for item");
+        System.out.println("[5] Display bought items");
         System.out.println("[0] Exit the application");
     }
 
     private void requestItems() {
         try {
-            this.availableItems = server.getItems();
+            Item[] availableItems = server.getItems();
+            for (int i = 0; i < availableItems.length; i++) {
+                System.out.printf("%d. %s%n", i, availableItems[i].getItemName());
+            }
         } catch (RemoteException e) {
-            System.out.println("Error requesting items:");
-            e.printStackTrace();
-        }
-        for (int i = 0; i < this.availableItems.length; i++) {
-            System.out.println(String.format("%d. %s", i, this.availableItems[i].getItemName()));
-        }
-    }
-
-    public void bidOnItem(String itemName, double bid) {
-        try {
-            server.bidOnItem(this.bidderName, itemName, bid);
-        } catch (RemoteException e) {
-            System.out.println(String.format("Bidding does not succeeded: %s", itemName));
+            System.err.println("Error requesting items:");
             e.printStackTrace();
         }
     }
 
     private void setBiddingStrategy(String biddingStrategy) {
-        this.biddingStrategy = Client.Strategies.valueOf(biddingStrategy);
+        if(biddingStrategyHashMap.containsKey(biddingStrategy)) {
+            this.biddingStrategy = biddingStrategyHashMap.get(biddingStrategy);
 
-        if(this.biddingStrategy == Client.Strategies.LastMinute) {
-            this.clientWatcher.setStopped(false);
+            if (biddingStrategy.equals(Strategies.LastMinute.name())) {
+                //todo
+            }
+            else if(biddingStrategy.equals(Strategies.Maximum.name())) {
+                this.setMaximumBid();
+            }
         }
         else {
-            this.clientWatcher.setStopped(true);
+            System.err.println("Invalid bidding strategy");
+            this.getBiddingStrategies();
         }
     }
 
     private void getBiddingStrategies() {
         System.out.println("Available strategies:");
-        for (Strategies s : asList(Client.Strategies.values())) {
-            System.out.println(s.name());
+        for (String s : biddingStrategyHashMap.keySet()) {
+            System.out.println(s);
         }
     }
 
-    public void removeWatch(String itemName) {
-        this.watchedItems.removeIf(i -> (i.getItemName() == itemName));
+    private void setMaximumBid() {
+        Scanner input = new Scanner(System.in);
+        System.out.println("Please insert the maximum bid");
+        String line = input.nextLine();
+
+        this.maximumBid = Double.parseDouble(line);
     }
 
-    private void addWatch(String itemName) {
-        Item item = null;
-        for(Item i : availableItems) {
-            if(i.getItemName() == itemName) {
-                item = i;
-                break;
-            }
-        }
-        if(item != null) {
-            this.watchedItems.add(item);
-        }
-        else {
-            System.out.println("No such item");
+    private void getOwnedItems() {
+        System.out.println("Owned items:");
+        for (Item i : this.ownedItems) {
+            System.out.println(i.getItemName());
         }
     }
 
-    private IAuctionServer server;
-    private Item[] availableItems;
-    private ArrayList<Item> ownedItems = new ArrayList<Item>();
-    @Getter private ArrayList<Item> watchedItems = new ArrayList<Item>();
-
-    private String bidderName;
-
-    private static enum Strategies {
+    private enum Strategies {
         Maximum,
         LastMinute
     }
 
-    private Strategies biddingStrategy = Client.Strategies.Maximum;
-    private double maximumBid = 0.00;
-    private ScheduledExecutorService executor;
-    private ClientWatcher clientWatcher;
+    private Server server;
+    private final ArrayList<Item> ownedItems = new ArrayList<>();
+
+    @Getter private String bidderName;
+    private final HashMap<String, BiddingStrategy> biddingStrategyHashMap = new HashMap<>() {{
+        put(Strategies.Maximum.name(), BiddingStrategy.Maximum());
+        put(Strategies.LastMinute.name(), BiddingStrategy.LastMinute());
+    }};
+
+    private BiddingStrategy biddingStrategy =
+            this.biddingStrategyHashMap.get(Strategies.Maximum.name());
+    @Getter private double maximumBid = 0.00;
 
     public Client() {
         try {
             String name = "Server";
             Registry registry = LocateRegistry.getRegistry();
-            this.server = (IAuctionServer)registry.lookup(name);
+            this.server = (Server)registry.lookup(name);
         } catch (Exception e) {
             System.err.println("Connection error:");
             e.printStackTrace();
         }
-        executor = Executors.newScheduledThreadPool(1);
-        this.clientWatcher = new ClientWatcher(this, 60);
-        executor.scheduleAtFixedRate(this.clientWatcher, 0, 1, TimeUnit.SECONDS);
     }
 
     public static void main(String[] args) {
-        if (System.getSecurityManager() == null) System.setSecurityManager(new SecurityManager());
+        if (System.getSecurityManager() == null)
+            System.setSecurityManager(new SecurityManager());
         Client client = new Client();
 
         Scanner input = new Scanner(System.in);
@@ -150,7 +129,7 @@ public class Client implements IAuctionListener{
 
         System.out.println("Hi, " + client.bidderName + "!");
         String line = "";
-        while(line != "0") {
+        while(!line.equals("0")) {
             switch(line) {
                 case "1":
                     client.getBiddingStrategies();
@@ -164,7 +143,15 @@ public class Client implements IAuctionListener{
                     break;
                 case "4":
                     line = input.nextLine();
-                    client.addWatch(line);
+                    try {
+                        client.server.registerListener(client, line);
+                    } catch (RemoteException e) {
+                        System.err.println("Registering for bidding went wrong:");
+                        e.printStackTrace();
+                    }
+                    break;
+                case "5":
+                    client.getOwnedItems();
                     break;
                 default:
                     client.printHelp();

@@ -4,8 +4,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.Observable;
 
-public class Item {
+@SuppressWarnings("deprecation")
+public class Item extends Observable {
     public Item(String ownerName, String itemName, String itemDesc,
                 double currentBid, int timeRemaining) {
         this.ownerName = ownerName;
@@ -15,19 +17,29 @@ public class Item {
         this.timeRemaining = timeRemaining;
     }
 
-    private ArrayList<IAuctionListener> listeners = new ArrayList<IAuctionListener>();
+    ArrayList<Integer> watchClock = new ArrayList<>() {{
+        add(0);
+        add(60);
+    }};
 
-    @Getter @Setter private String ownerName;
-    @Getter @Setter private String itemName;
-    @Getter @Setter private String itemDescription;
-    @Getter @Setter private double currentBid;
+    @Getter private final String ownerName;
+    @Getter private final String itemName;
+    @Getter private final String itemDescription;
+    @Getter private double currentBid;
     @Getter @Setter private String currentBidder = null;
-    @Getter @Setter private int timeRemaining;
+    @Getter private int timeRemaining;
 
-    public void addListener(IAuctionListener listener) {
-        listeners.add(listener);
+    public void setCurrentBid(double bid) {
+        this.currentBid = bid;
+        setChanged();
+        notifyObservers();
     }
-    public ArrayList<IAuctionListener> getListeners() {
-        return listeners;
+
+    public void setTimeRemaining(int time) {
+        this.timeRemaining = time;
+        if(watchClock.contains(time)) {
+            setChanged();
+            notifyObservers();
+        }
     }
 }

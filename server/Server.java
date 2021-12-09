@@ -3,8 +3,8 @@ package server;
 import common.IAuctionServer;
 import common.IAuctionListener;
 import common.Item;
+import common.WrappedObserver;
 
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -15,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+@SuppressWarnings("removal")
 public class Server implements IAuctionServer {
     @Override
     public void placeItemForBid(String ownerName, String itemName, String itemDesc, double startBid, int auctionTime)
@@ -42,15 +43,14 @@ public class Server implements IAuctionServer {
             else {
                 item.setCurrentBidder(bidderName);
                 item.setCurrentBid(bid);
-
-                this.update(item);
             }
         }
     }
     @Override
     public Item[] getItems()
             throws RemoteException {
-        return (Item[])this.availableItems.values().toArray();
+        int size = this.availableItems.values().size();
+        return this.availableItems.values().toArray(new Item[size]);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class Server implements IAuctionServer {
             throw new RemoteException("No such item");
         }
         else {
-            item.addListener(al);
+            item.addObserver(new WrappedObserver(al));
         }
     }
 
@@ -73,13 +73,6 @@ public class Server implements IAuctionServer {
         }
         else {
             availableItems.remove(itemName);
-            this.update(item);
-        }
-    }
-
-    private void update(Item item) throws RemoteException {
-        for(IAuctionListener al : item.getListeners()) {
-            al.update(item);
         }
     }
 
@@ -96,44 +89,30 @@ public class Server implements IAuctionServer {
             }
             String itemDesc = String.format("item%d", i);
             int time = i * 10;
-            Item item = new Item(ownerName.toString(), itemName.toString(), itemDesc, 0.00, time);
+            try {
+                this.placeItemForBid(ownerName.toString(), itemName.toString(), itemDesc, 0.00, time);
+            } catch (RemoteException e) {
+                System.err.println("Error during placing the item to bidding:");
+                e.printStackTrace();
+            }
         }
     }
 
-    private HashMap<String, Item> availableItems;
-    private ScheduledExecutorService executor;
+    private final HashMap<String, Item> availableItems = new HashMap<>();
+
+    public static String registryEntryName = "Server";
 
     public Server() {
-        String name = "Server";
-        Registry registry = null;
-        boolean initialized = true;
-
         try {
-            registry = LocateRegistry.getRegistry();
-            registry.lookup(name);
-        }
-        catch (NotBoundException e) {
-            initialized = false;
-        }
-        catch (Exception e) {
-            System.err.println("Server exception:");
-            e.printStackTrace();
-        }
-
-        if(initialized) {
-            System.err.println("Server already exists!");
-            System.exit(1);
-        }
-
-        try {
-            availableItems = new HashMap<String, Item>();
+            Registry registry = LocateRegistry.getRegistry();
+            registry.lookup(Server.registryEntryName);
             this.generateItems();
 
-            executor = Executors.newScheduledThreadPool(1);
+            ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
             executor.scheduleAtFixedRate(new ItemManager(this), 0, 1, TimeUnit.SECONDS);
 
             IAuctionServer stub = (IAuctionServer) UnicastRemoteObject.exportObject(this, 0);
-            registry.rebind(name, stub);
+            registry.rebind(Server.registryEntryName, stub);
             System.out.println("Server bound");
         } catch (Exception e) {
             System.err.println("Server exception:");
@@ -142,7 +121,12 @@ public class Server implements IAuctionServer {
     }
 
     public static void main(String[] args) {
-        if (System.getSecurityManager() == null) System.setSecurityManager(new SecurityManager());
-        new Server();
+        if (System.getSecurityManager() == null)
+            System.setSecurityManager(new SecurityManager());
+        AuctionServerFactory auctionServerFactory = new AuctionServerFactory();
+        if(auctionServerFactory.create(AuctionServerFactory.AuctionServerTypes.Server.name()) == null) {
+            System.err.println("Server creation failed");
+            System.exit(1);
+        }
     }
 }

@@ -5,7 +5,7 @@ import common.Item;
 import java.rmi.RemoteException;
 
 public class ItemManager implements Runnable{
-    private Server server;
+    private final Server server;
 
     public ItemManager(Server server) {
         this.server = server;
@@ -16,11 +16,8 @@ public class ItemManager implements Runnable{
         try {
             for(Item item : server.getItems()) {
                 int time = item.getTimeRemaining();
-
-                if(time > 0) {
-                    item.setTimeRemaining(time - 1);
-                }
-                else {
+                item.setTimeRemaining(time - 1);
+                if(time - 1 == 0) {
                     server.endAuction(item.getItemName());
                 }
             }
@@ -29,3 +26,4 @@ public class ItemManager implements Runnable{
         }
     }
 }
+
