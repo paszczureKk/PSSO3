@@ -11,6 +11,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 @SuppressWarnings("removal")
@@ -33,7 +34,9 @@ public class Client implements IAuctionListener{
         System.out.println("[2] Set bidding strategy");
         System.out.println("[3] Display available items");
         System.out.println("[4] Bid for item");
-        System.out.println("[5] Display bought items");
+        System.out.println("[5] Register for item alerts");
+        System.out.println("[6] Display bought items");
+        System.out.println("[7] Put an item for bid");
         System.out.println("[0] Exit the application");
     }
 
@@ -53,10 +56,10 @@ public class Client implements IAuctionListener{
         if(biddingStrategyHashMap.containsKey(biddingStrategy)) {
             this.biddingStrategy = biddingStrategyHashMap.get(biddingStrategy);
 
-            if (biddingStrategy.equals(Strategies.LastMinute.name())) {
-                //todo
-            }
-            else if(biddingStrategy.equals(Strategies.Maximum.name())) {
+            //if (biddingStrategy.equals(Strategies.LastMinute.name())) {
+            //    //todo
+            //}
+            if(biddingStrategy.equals(Strategies.Maximum.name())) {
                 this.setMaximumBid();
             }
         }
@@ -106,6 +109,15 @@ public class Client implements IAuctionListener{
             this.biddingStrategyHashMap.get(Strategies.Maximum.name());
     @Getter private double maximumBid = 0.00;
 
+    public String getBiddingStrategy() {
+        for(Map.Entry<String, BiddingStrategy> strategy : biddingStrategyHashMap.entrySet()) {
+            if(strategy.getValue().equals(this.biddingStrategy)) {
+                return strategy.getKey();
+            }
+        }
+        return null;
+    }
+
     public Client() {
         try {
             String name = "Server";
@@ -129,12 +141,14 @@ public class Client implements IAuctionListener{
 
         System.out.println("Hi, " + client.bidderName + "!");
         String line = "";
+        double bid;
         while(!line.equals("0")) {
             switch(line) {
                 case "1":
                     client.getBiddingStrategies();
                     break;
                 case "2":
+                    System.out.println("Type in chosen strategy:");
                     line = input.nextLine();
                     client.setBiddingStrategy(line);
                     break;
@@ -142,6 +156,20 @@ public class Client implements IAuctionListener{
                     client.requestItems();
                     break;
                 case "4":
+                    System.out.println("Type in the item name you wish to bid for:");
+                    line = input.nextLine();
+                    System.out.println("Type in the bid amount (example: 1.99):");
+                    bid = Double.parseDouble(input.nextLine());
+                    try {
+                        client.server.bidOnItem(client.getBidderName(), line, bid);
+                    } catch (RemoteException e) {
+                        System.err.println("Bidding for item went wrong:");
+                        e.printStackTrace();
+                    }
+                    break;
+                case "5":
+                    System.out.printf("Your current bidding strategy: %s%n", client.getBiddingStrategy());
+                    System.out.println("Type in the item name you wish to register for:");
                     line = input.nextLine();
                     try {
                         client.server.registerListener(client, line);
@@ -150,8 +178,26 @@ public class Client implements IAuctionListener{
                         e.printStackTrace();
                     }
                     break;
-                case "5":
+                case "6":
                     client.getOwnedItems();
+                    break;
+                case "7":
+                    System.out.println("Type in the item name you wish to place for bidding:");
+                    String itemName = input.nextLine();
+                    System.out.println("Type in the item description:");
+                    String itemDesc = input.nextLine();
+                    System.out.println("Type in the starting bid (example: 1.99):");
+                    bid = Double.parseDouble(input.nextLine());
+                    System.out.println("Type in the auction time in seconds:");
+                    int time = Integer.parseInt(input.nextLine());
+                    try {
+                        client.server.placeItemForBid(
+                                client.getBidderName(), itemName, itemDesc, bid, time
+                        );
+                    } catch (RemoteException e) {
+                        System.err.println("Placing an item for auction went wrong:");
+                        e.printStackTrace();
+                    }
                     break;
                 default:
                     client.printHelp();
