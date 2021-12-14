@@ -4,8 +4,6 @@ import common.IAuctionServer;
 import common.IAuctionListener;
 import common.Item;
 
-import lombok.Getter;
-
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -99,15 +97,23 @@ public class Client implements IAuctionListener{
     private Server server;
     private final ArrayList<Item> ownedItems = new ArrayList<>();
 
-    @Getter private String bidderName;
+    private String bidderName;
     private final HashMap<String, BiddingStrategy> biddingStrategyHashMap = new HashMap<>() {{
         put(Strategies.Maximum.name(), BiddingStrategy.Maximum());
         put(Strategies.LastMinute.name(), BiddingStrategy.LastMinute());
     }};
 
+    public String getBidderName() {
+        return this.bidderName;
+    }
+
     private BiddingStrategy biddingStrategy =
             this.biddingStrategyHashMap.get(Strategies.Maximum.name());
-    @Getter private double maximumBid = 0.00;
+    private double maximumBid = 0.00;
+
+    public double getMaximumBid() {
+        return this.maximumBid;
+    }
 
     public String getBiddingStrategy() {
         for(Map.Entry<String, BiddingStrategy> strategy : biddingStrategyHashMap.entrySet()) {

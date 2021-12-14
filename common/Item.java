@@ -1,8 +1,5 @@
 package common;
 
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.ArrayList;
 import java.util.Observable;
 
@@ -22,13 +19,33 @@ public class Item extends Observable {
         add(60);
     }};
 
-    @Getter private final String ownerName;
-    @Getter private final String itemName;
-    @Getter private final String itemDescription;
-    @Getter private double currentBid;
-    @Getter @Setter private String currentBidder = null;
-    @Getter private int timeRemaining;
-
+    private final String ownerName;
+    public String getOwnerName() {
+        return this.ownerName;
+    }
+    private final String itemName;
+    public String getItemName() {
+        return this.itemName;
+    }
+    private final String itemDescription;
+    public String getItemDescription() {
+        return this.itemDescription;
+    }
+    private double currentBid;
+    public double getCurrentBid() {
+        return this.currentBid;
+    }
+    private String currentBidder = null;
+    public String getCurrentBidder() {
+        return this.currentBidder;
+    }
+    public void setCurrentBidder(String currentBidder) {
+        this.currentBidder = currentBidder;
+    }
+    private int timeRemaining;
+    public int getTimeRemaining() {
+        return this.timeRemaining;
+    }
     public void setCurrentBid(double bid) {
         this.currentBid = bid;
         setChanged();
